@@ -13,7 +13,7 @@
 # limitations under the License.
 
 ARG CUDA_VERSION=10.1
-FROM nvcr.io/nvidia/cuda:${CUDA_VERSION}-cudnn7-devel-ubuntu16.04
+FROM nvidia/cuda:${CUDA_VERSION}-cudnn7-devel-ubuntu16.04
 
 LABEL maintainer="NVIDIA CORPORATION"
 
