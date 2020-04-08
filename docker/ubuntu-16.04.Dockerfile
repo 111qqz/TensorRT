@@ -25,7 +25,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     pkg-config \
     python3 \
-    python3-pip
+    python3-pip \
+    vim \
+    lftp \
+    tmux \
+    openssh-server \
+    openssh-client && \
+    apt clean && \
+    rm -rf /var/lib/apt/lists/*
+
+
+
 
 RUN cd /usr/local/bin &&\
     ln -s /usr/bin/python3 python &&\
