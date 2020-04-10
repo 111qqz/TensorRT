@@ -1,0 +1,27 @@
+
+layer {
+  name: "Input"
+  type: "Input"
+  top: "Input"
+  input_param {
+    shape {
+      dim: 1
+      dim: 3
+      dim: 640
+      dim: 640
+    }
+  }
+}
+layer {
+  name: "Conv_0"
+  type: "Convolution"
+  bottom: "Input"
+  top: "Conv_0"
+  convolution_param {
+    num_output: 32
+    pad: 1
+    kernel_size: 3
+    group: 1
+    stride: 2
+  }
+}
