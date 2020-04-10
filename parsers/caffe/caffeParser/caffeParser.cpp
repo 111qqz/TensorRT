@@ -233,6 +233,8 @@ std::vector<nvinfer1::PluginField> CaffeParser::parseDetectionOutputParam(const 
     return f;
 }
 
+// nvinfer1::PluginField:
+// Structure containing plugin attribute field names and associated data This information can be parsed to decode necessary plugin metadata.
 std::vector<nvinfer1::PluginField> CaffeParser::parseLReLUParam(const trtcaffe::LayerParameter& msg, CaffeWeightFactory& /*weightFactory*/, BlobNameToTensor& /*tensors*/)
 {
     std::vector<nvinfer1::PluginField> f;
@@ -338,6 +340,8 @@ const IBlobNameToTensor* CaffeParser::parseBuffers(const char* deployBuffer,
     return parse(network, weightType, modelBuffer != nullptr);
 }
 
+
+//  parser 入口
 const IBlobNameToTensor* CaffeParser::parse(const char* deployFile,
                                             const char* modelFile,
                                             INetworkDefinition& network,
@@ -357,6 +361,9 @@ const IBlobNameToTensor* CaffeParser::parse(const char* deployFile,
     {
         RETURN_AND_LOG_ERROR(nullptr, "Could not parse deploy file");
     }
+
+    // 　把prototxt和caffe model分别读进了　std::shared_ptr<trtcaffe::NetParameter> mDeploy
+    // 　和　std::shared_ptr<trtcaffe::NetParameter> mModel
 
     return parse(network, weightType, modelFile != nullptr);
 }
@@ -387,6 +394,27 @@ const IBlobNameToTensor* CaffeParser::parse(INetworkDefinition& network,
     for (int i = 0; i < mDeploy->input_size(); i++)
     {
         DimsCHW dims;
+
+        // 　input layer以外的两种不同的输入方式
+        /*
+            第一种:
+            input: "data"
+            input: "trimap"
+            input_shape {
+              dim: 1
+              dim: 3
+              dim: 112
+              dim: 112
+            }
+
+            第二种:
+            input: "Input"
+            input_dim: 1
+            input_dim: 3
+            input_dim: 112
+            input_dim: 112
+        */
+        //  注意这里dims只有后面三个维度，是没有bacth 的维度的
         if (mDeploy->input_shape_size())
         {
             dims = DimsCHW{(int) mDeploy->input_shape().Get(i).dim().Get(1), (int) mDeploy->input_shape().Get(i).dim().Get(2), (int) mDeploy->input_shape().Get(i).dim().Get(3)};
@@ -399,9 +427,12 @@ const IBlobNameToTensor* CaffeParser::parse(INetworkDefinition& network,
         (*mBlobNameToTensor)[mDeploy->input().Get(i)] = tensor;
     }
 
+    // 　这个ok　定义和使用距离有点远啊．．
     for (int i = 0; i < mDeploy->layer_size() && ok; i++)
     {
         const trtcaffe::LayerParameter& layerMsg = mDeploy->layer(i);
+        // 　??? 为什么要跳过Test Phase?　
+        //  虽然实际应该不影响．．因为layer一般是没有写这个参数的．．
         if (layerMsg.has_phase() && layerMsg.phase() == trtcaffe::TEST)
         {
             continue;
@@ -425,6 +456,9 @@ const IBlobNameToTensor* CaffeParser::parse(INetworkDefinition& network,
             }
         }
 
+        // Q:这两个　pluginFactory　是做什么的？　里面的内容并不是nv内置的plugin．．
+        // Ａ: pluginFactory　是用户创建的custom layer
+
         // If there is a pluginFactory provided, use layer name matching to handle the plugin construction
         if (mPluginFactory && mPluginFactory->isPlugin(layerMsg.name().c_str()))
         {
@@ -440,6 +474,7 @@ const IBlobNameToTensor* CaffeParser::parse(INetworkDefinition& network,
 
             ILayer* layer = isExt ? network.addPluginExt(&inputs[0], int(inputs.size()), *static_cast<IPluginExt*>(plugin))
                                   : network.addPlugin(&inputs[0], int(inputs.size()), *plugin);
+            //  遍历layer,然后依次创建出　ILayer* 　出来
 
             layer->setName(layerMsg.name().c_str());
             if (plugin->getNbOutputs() != layerMsg.top_size())
@@ -593,6 +628,9 @@ const IBlobNameToTensor* CaffeParser::parse(INetworkDefinition& network,
                       << std::endl;
             continue;
         }
+
+        //  上面的代码是解析build-in plugin的，其中特殊处理了input layer
+        //  忽略了dropout和flatten layer
 
         // Use parser table to lookup the corresponding parse function to handle the rest of the layers
         auto v = gParseTable.find(layerMsg.type());
