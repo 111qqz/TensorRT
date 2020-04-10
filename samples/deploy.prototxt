@@ -7,21 +7,24 @@ layer {
     shape {
       dim: 1
       dim: 3
-      dim: 640
-      dim: 640
+      dim: 10
+      dim: 10
     }
   }
 }
+
 layer {
-  name: "Conv_0"
-  type: "Convolution"
+  name: "Reshape"
+  type: "Reshape"
   bottom: "Input"
-  top: "Conv_0"
-  convolution_param {
-    num_output: 32
-    pad: 1
-    kernel_size: 3
-    group: 1
-    stride: 2
+  top: "output"
+  reshape_param {
+    shape {
+      dim: 0
+      dim: -1
+      dim: 1
+      dim: 4
+    }
+    axis: -1
   }
 }
