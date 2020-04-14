@@ -241,9 +241,15 @@ ICudaEngine* caffeToTRTModel()
 
     for (int i = 0, n = network->getNbOutputs(); i < n; i++)
     {
-        Dims3 dims = static_cast<Dims3&&>(network->getOutput(i)->getDimensions());
-        gLogInfo << "Output \"" << network->getOutput(i)->getName() << "\": " << dims.d[0] << "x" << dims.d[1] << "x"
-                 << dims.d[2] << std::endl;
+        // Dims3 dims = static_cast<Dims3&&>(network->getOutput(i)->getDimensions());
+        auto dims = network->getOutput(i)->getDimensions();
+        for ( int j = 0 ; j < dims.nbDims  ; j++)
+        {
+            gLogInfo << "Output \"" << network->getOutput(i)->getName() << "\": " << dims.d[j] << std::endl;
+        }
+
+        // gLogInfo << "Output \"" << network->getOutput(i)->getName() << "\": " << dims.d[0] << "x" << dims.d[1] << "x"
+        //          << dims.d[2] << std::endl;
     }
 
     // Build the engine
@@ -773,7 +779,6 @@ static ICudaEngine* createEngine()
 int main(int argc, char** argv)
 {
     // create a TensorRT model from the caffe/uff/onnx model and serialize it to a stream
-
     auto sampleTest = gLogger.defineTest(gSampleName, argc, argv);
 
     gLogger.reportTestStart(sampleTest);
