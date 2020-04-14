@@ -431,6 +431,8 @@ const IBlobNameToTensor* CaffeParser::parse(INetworkDefinition& network,
     for (int i = 0; i < mDeploy->layer_size() && ok; i++)
     {
         const trtcaffe::LayerParameter& layerMsg = mDeploy->layer(i);
+        auto layername = layerMsg.name();
+        std::cout<<" layername:"<< layername<< std::endl;
         // 　??? 为什么要跳过Test Phase?　
         //  虽然实际应该不影响．．因为layer一般是没有写这个参数的．．
         if (layerMsg.has_phase() && layerMsg.phase() == trtcaffe::TEST)
@@ -618,6 +620,91 @@ const IBlobNameToTensor* CaffeParser::parse(INetworkDefinition& network,
             }
             continue;
         }
+        if (layerMsg.type() == "Slice")
+        {
+            const trtcaffe::SliceParameter& p = layerMsg.slice_param();
+            if (p.has_axis() && p.has_slice_dim())
+            {
+                RETURN_AND_LOG_ERROR(nullptr,"Either axis or slice_dim should be specified; not both." );
+            }
+            //  问题转化为如何把bottom blob按照split point拆开,然后赋给top blobs
+            // 参考caffe的处理
+            // 暂时只处理带axis参数的,slice_dim参数已经不建议使用了
+
+            // TO DO: 正确处理axis为负数的情况
+            // -1的原因是 trt的batch的维度是隐式的
+            const int slice_axis = std::max(0, p.axis() - 1);
+            std::cout<<" slice_axis:" << slice_axis << std::endl;
+            const std::string bottom_name = layerMsg.bottom().Get(0);
+            std::cout<<" bottom_name:" << bottom_name << std::endl;
+            auto bottomBlob = (*mBlobNameToTensor)[bottom_name];
+            // const int bottom_slice_axis = layerMsg.bottom().Get(0)->shape();
+            const int bottom_slice_axis = bottomBlob->getDimensions().d[slice_axis];
+            // std::cout <<" max nbDims:" << bottomBlob->getDimensions().nbDims << std::endl;
+            std::cout<<" bottom_slice_axis:"<< bottom_slice_axis << std::endl;
+
+            std::vector<int> slice_point;
+            std::copy(p.slice_point().begin(),p.slice_point().end(),std::back_inserter(slice_point));
+
+            if (slice_point.size() != 0)
+            {
+                // n个点把一条线段切割成n+1(top.size())份
+                if (slice_point.size() != (layerMsg.top_size() - 1) )
+                {
+                    RETURN_AND_LOG_ERROR(nullptr,"slice_point size not match top blob num" );
+                }
+                if (layerMsg.top_size() > bottom_slice_axis)
+                {
+                    RETURN_AND_LOG_ERROR(nullptr,"at least one element for each top blob" );
+                }
+                int prev = 0;
+                std::vector<int> slices;
+                for (int i = 0; i < slice_point.size(); ++i) 
+                {
+                    if (slice_point[i] <= prev)
+                    {
+                        RETURN_AND_LOG_ERROR(nullptr,"The slice_point sequence should increase monotonically" );
+                    }
+                    slices.push_back(slice_point[i] - prev);
+                    prev = slice_point[i];
+                }
+                
+                slices.push_back(bottom_slice_axis - prev);
+
+                //  check slices
+
+                for (const auto & slice : slices)
+                {
+                    std::cout<<" slice:"<<slice<< std::endl;
+                }
+
+            
+
+                Dims top_shape = bottomBlob->getDimensions();
+                // check top shape
+                for ( int i = 0 ; i < top_shape.nbDims ; i++)
+                {
+                    std::cout<<"top_shape["<<i<<"] "<<top_shape.d[i] << std::endl;
+                }
+
+                int offset_slice_axis = 0;
+                for ( int i = 0 ; i < layerMsg.top_size() ; i++)
+                {
+                    top_shape.d[slice_axis] = slices[i];
+                    const int top_slice_axis = top_shape.d[slice_axis];
+                    bottomBlob->setDimensions(top_shape);
+                    (*mBlobNameToTensor)[layerMsg.top().Get(i)] = bottomBlob; 
+                    ILayer* layer = network.addSlice(*bottomBlob,Dims{1},Dims{},Dims{});
+                    // (*mBlobNameToTensor)[layerMsg.top().Get(i)]->setDimensions(top_shape);	
+                }
+                
+
+            }
+
+            continue;
+
+
+        }
         if (layerMsg.type() == "Flatten")
         {
             ITensor* tensor = (*mBlobNameToTensor)[layerMsg.bottom().Get(0)];
@@ -628,6 +715,7 @@ const IBlobNameToTensor* CaffeParser::parse(INetworkDefinition& network,
                       << std::endl;
             continue;
         }
+   
 
         //  上面的代码是解析build-in plugin的，其中特殊处理了input layer
         //  忽略了dropout和flatten layer
