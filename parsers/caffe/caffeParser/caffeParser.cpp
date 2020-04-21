@@ -247,7 +247,7 @@ std::vector<nvinfer1::PluginField> CaffeParser::parseLReLUParam(const trtcaffe::
 std::vector<nvinfer1::PluginField> CaffeParser::parseRPROIParam(const trtcaffe::LayerParameter& msg, CaffeWeightFactory& weightFactory, BlobNameToTensor& tensors)
 {
     std::vector<nvinfer1::PluginField> f;
-    const trtcaffe::ROIPoolingParameter& p1 = msg.roi_pooling_param();
+    const trtcaffe::RoIPoolingParameter& p1 = msg.roi_pooling_param();
     const trtcaffe::RegionProposalParameter& p2 = msg.region_proposal_param();
 
     // Memory allocations for plugin field variables

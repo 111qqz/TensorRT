@@ -60,13 +60,11 @@ ILayer* parsePooling(INetworkDefinition& network, const trtcaffe::LayerParameter
 
         layer->setName(msg.name().c_str());
 		layer->setPaddingMode(PaddingMode::kCAFFE_ROUND_UP); // caffe pool use ceil mode by default
-        // FB pooling parameters
-        // Use floor((height + 2 * padding - kernel) / stride) + 1
-        // instead of ceil((height + 2 * padding - kernel) / stride) + 1
-        if (p.has_torch_pooling() ? p.torch_pooling() : false)
+        if (p.has_round_mode())
         {
-		    layer->setPaddingMode(PaddingMode::kCAFFE_ROUND_DOWN); // facebook torch pool use floor mode
-		}
+            layer->setPaddingMode(p.round_mode() == trtcaffe::PoolingParameter::CEIL ? PaddingMode::kCAFFE_ROUND_UP
+                                                                                     : PaddingMode::kCAFFE_ROUND_DOWN);
+        }
 
         tensors[msg.top(0)] = layer->getOutput(0);
 
