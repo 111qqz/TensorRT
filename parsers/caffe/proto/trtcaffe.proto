@@ -477,7 +477,28 @@ message LayerParameter {
   optional ReverseParameter reverse_param = 233338;
 
   optional ScatterParameter scatter_param = 233339;
+
+  optional DistributeFpnProposalsParameter distribute_fpn_proposals_param = 8266718;
+  optional CollectFpnProposalsParameter collect_fpn_proposals_param = 8266719;
+
 }
+//  for faster-rcnn c4
+message CollectFpnProposalsParameter {
+  optional uint32 rpn_max_level = 1 [default = 7];
+  optional uint32 rpn_min_level = 2 [default = 4];
+  optional uint32 rpn_post_nms_topn = 3 [default = 1000];
+}
+
+message DistributeFpnProposalsParameter {
+  optional float roi_canonical_scale = 1 [default = 56];
+  optional uint32 roi_canonical_level = 2 [default = 0];
+  optional uint32 roi_max_level = 3 [default = 7];
+  optional uint32 roi_min_level = 4 [default = 4];
+  optional bool legacy_plus_one = 5 [default = true];
+}
+
+
+
 
 // Message that stores parameters used by ProposalLayer
 message ProposalParameter {
