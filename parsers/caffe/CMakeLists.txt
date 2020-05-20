@@ -16,6 +16,7 @@
 
 ############################# GENERATE C++ PROTO FILES ###################################
 protobuf_generate_cpp(CAFFE_PROTO_SRC CAFFE_PROTO_HDR proto/trtcaffe.proto)
+# MESSAGE(FATAL_ERROR " CAFFE_PROTO_SRC *****   ${CAFFE_PROTO_SRC}  ${CAFFE_PROTO_HDR}")
 add_custom_target(caffe_proto
     DEPENDS
     ${CAFFE_PROTO_SRC} ${CAFFE_PROTO_HDR} 
@@ -65,12 +66,12 @@ target_link_libraries(${SHARED_TARGET}
 )
 
 # modify google namespace to avoid namespace collision.
-set(GOOGLE google_private)
-target_compile_definitions(${SHARED_TARGET}
-    PRIVATE 
-    "-Dgoogle=${GOOGLE}"
-    "-DGOOGLE_PROTOBUF_ARCH_64_BIT"
-)
+# set(GOOGLE google_private)
+# target_compile_definitions(${SHARED_TARGET}
+#     PRIVATE 
+#     "-Dgoogle=${GOOGLE}"
+#     "-DGOOGLE_PROTOBUF_ARCH_64_BIT"
+# )
 
 set_target_properties(${SHARED_TARGET} PROPERTIES LINK_FLAGS "-Wl,--exclude-libs,ALL")
 

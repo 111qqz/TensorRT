@@ -54,9 +54,9 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   set(CMAKE_INSTALL_PREFIX ${TRT_LIB_DIR}/../ CACHE PATH "TensorRT installation" FORCE)
 endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 
-option(BUILD_PLUGINS "Build TensorRT plugin" ON)
+option(BUILD_PLUGINS "Build TensorRT plugin" OFF)
 option(BUILD_PARSERS "Build TensorRT parsers" ON)
-option(BUILD_SAMPLES "Build TensorRT samples" ON)
+option(BUILD_SAMPLES "Build TensorRT samples" OFF)
 option(NVPARTNER "Build partner repos from source" OFF)
 option(NVINTERNAL "Build in NVIDIA internal source tree" OFF)
 
@@ -81,15 +81,19 @@ set(CMAKE_CXX_FLAGS "-Wno-deprecated-declarations ${CMAKE_CXX_FLAGS} -DBUILD_SYS
 ################################### DEPENDENCIES ##########################################
 set(DEFAULT_CUDA_VERSION 10.1)
 set(DEFAULT_CUDNN_VERSION 7.5)
-set(DEFAULT_PROTOBUF_VERSION 3.0.0)
+set(DEFAULT_PROTOBUF_VERSION 3.5.0)
 set(DEFAULT_PROTOBUF_INTERNAL_VERSION 10.0)
 set(DEFAULT_CUB_VERSION 1.8.0)
 
 # Dependency Version Resolution
 set_ifndef(CUDA_VERSION ${DEFAULT_CUDA_VERSION})
-message(STATUS "CUDA version set to ${CUDA_VERSION}")
+# message(STATUS "TensorRT-OSS CUDA version set to ${CUDA_VERSION}")
 set_ifndef(CUDNN_VERSION ${DEFAULT_CUDNN_VERSION})
-message(STATUS "cuDNN version set to ${CUDNN_VERSION}")
+# message(STATUS "TensorRT-OSS cuDNN version set to ${CUDNN_VERSION}")
+# message(STATUS "debug CUDNN_ROOT ${CUDNN_ROOT}")
+# message(STATUS "debug CUDNN_ROOT_DIR ${CUDNN_ROOT_DIR}")
+# message(STATUS "debug TRT_LIB_DIR ${TRT_LIB_DIR}")
+# message(FATAL_ERROR "debug DEFAULT_PROTOBUF_VERSION ${DEFAULT_PROTOBUF_VERSION}")
 
 if (NVINTERNAL)
     #TODO: Change this to set_ifndef(PROTOBUF_INTERNAL_VERSION ${DEFAULT_PROTOBUF_INTERNAL_VERSION}) once onnx-tensorrts build system is fixed
@@ -109,6 +113,7 @@ find_package(Threads REQUIRED)
 include(third_party/zlib.cmake)
 include(third_party/protobuf.cmake)
 if (NVINTERNAL)
+# NVINTERNAL=off 
 ########################################### DEPENDENCIES FOR BUILDING IN NVIDIA's TREE ############################################
     set(EXTERNALS ${PROJECT_SOURCE_DIR}/../externals)
     set(CUB_ROOT_DIR ${EXTERNALS}/cub/${CUB_VERSION} CACHE STRING "directory of CUB installation")
@@ -162,7 +167,44 @@ else()
         ${CUDA_TOOLKIT_ROOT_DIR}/lib64)
 
     if(BUILD_PARSERS)
-        configure_protobuf(${PROTOBUF_VERSION})
+        message(STATUS "in protobuf BUILD_PARSERS ")
+        function(protobuf_generate_cpp SRCS HDRS)
+            set(PROTOS ${ARGN})
+            set(Protobuf_LIB_DIR "/usr/local/lib")
+
+            foreach(proto ${PROTOS})
+                get_filename_component(PROTO_NAME "${proto}" NAME_WE)
+                get_filename_component(PROTO_DIR "${proto}" DIRECTORY)
+
+                set(PROTO_HEADER "${PROTO_NAME}.pb.h")
+                set(PROTO_SRC    "${PROTO_NAME}.pb.cc")
+
+                message(STATUS "Protobuf ${proto} -> ${PROTO_DIR}/${PROTO_SRC} ${PROTO_DIR}/${PROTO_HEADER}")
+
+                file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${PROTO_DIR})
+
+                message(STATUS ${CMAKE_CURRENT_BINARY_DIR})
+                # message(STATUS " **** Protobuf_LIB_DIR ${Protobuf_LIB_DIR}")
+                # message(STATUS " **** PROTO_DIR ${PROTO_DIR}")
+                # message(STATUS " **** Protobuf_PROTOC_EXECUTABLE ${Protobuf_PROTOC_EXECUTABLE}")
+
+                add_custom_command(
+                    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_DIR}/${PROTO_SRC}"
+                        "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_DIR}/${PROTO_HEADER}"
+                    COMMAND LIBRARY_PATH=${Protobuf_LIB_DIR} ${Protobuf_PROTOC_EXECUTABLE}
+                    ARGS --cpp_out ${CMAKE_CURRENT_BINARY_DIR}/${PROTO_DIR} -I${CMAKE_CURRENT_SOURCE_DIR}/${PROTO_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/${proto}
+                    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+                    # DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${proto}" protobuf::libprotobuf Protobuf
+                    COMMENT "${proto} -> ${PROTO_DIR}/${PROTO_SRC} ${PROTO_DIR}/${PROTO_HEADER}"
+                )
+
+                list(APPEND SOURCES "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_DIR}/${PROTO_SRC}")
+                list(APPEND HEADERS "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_DIR}/${PROTO_HEADER}")
+            endforeach()
+            set(${SRCS} ${SOURCES} PARENT_SCOPE)
+            set(${HDRS} ${HEADERS} PARENT_SCOPE)
+        endfunction()
+        # configure_protobuf(${PROTOBUF_VERSION})
     endif()
 ########################################### DEPENDENCIES FOR BUILDING OUTSIDE OF NVIDIA ############################################
 endif()
