@@ -171,6 +171,7 @@ else()
         function(protobuf_generate_cpp SRCS HDRS)
             set(PROTOS ${ARGN})
             set(Protobuf_LIB_DIR "/usr/local/lib")
+            set(Protobuf_PROTOC_EXECUTABLE "/usr/local/bin/protoc")
 
             foreach(proto ${PROTOS})
                 get_filename_component(PROTO_NAME "${proto}" NAME_WE)
@@ -184,9 +185,9 @@ else()
                 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${PROTO_DIR})
 
                 message(STATUS ${CMAKE_CURRENT_BINARY_DIR})
-                # message(STATUS " **** Protobuf_LIB_DIR ${Protobuf_LIB_DIR}")
-                # message(STATUS " **** PROTO_DIR ${PROTO_DIR}")
-                # message(STATUS " **** Protobuf_PROTOC_EXECUTABLE ${Protobuf_PROTOC_EXECUTABLE}")
+                message(STATUS " **** Protobuf_LIB_DIR ${Protobuf_LIB_DIR}")
+                message(STATUS " **** PROTO_DIR ${PROTO_DIR}")
+                message(STATUS " **** Protobuf_PROTOC_EXECUTABLE ${Protobuf_PROTOC_EXECUTABLE}")
 
                 add_custom_command(
                     OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_DIR}/${PROTO_SRC}"
